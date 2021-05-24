@@ -2,90 +2,20 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <sstream>
-#include <unordered_set>
+#include <regex>
 
 extern int endsWith(const char* string ,const char* end);
 
-std::unordered_set<std::string> instructionsSet , directiveSet;
+std::vector<std::regex> allRegex;
 
-void inicilalizujKolekcije() {
-    directiveSet.insert(".global");
-    directiveSet.insert(".extern");
-    directiveSet.insert(".section");
-    directiveSet.insert(".word");
-    directiveSet.insert(".skip");
-    directiveSet.insert(".equ");
-    directiveSet.insert(".end");
-
-    instructionsSet.insert("halt");
-    instructionsSet.insert("int");
-    instructionsSet.insert("iret");
-    instructionsSet.insert("call");
-    instructionsSet.insert("ret");
-    instructionsSet.insert("jmp");
-    instructionsSet.insert("jeq");
-    instructionsSet.insert("jne");
-    instructionsSet.insert("jgt");
-    instructionsSet.insert("push");
-    instructionsSet.insert("pop");
-    instructionsSet.insert("xchg");
-    instructionsSet.insert("add");
-    instructionsSet.insert("sub");
-    instructionsSet.insert("mul");
-    instructionsSet.insert("div");
-    instructionsSet.insert("cmp");
-    instructionsSet.insert("not");
-    instructionsSet.insert("and");
-    instructionsSet.insert("or");
-    instructionsSet.insert("xor");
-    instructionsSet.insert("test");
-    instructionsSet.insert("shl");
-    instructionsSet.insert("shr");
-    instructionsSet.insert("ldr");
-    instructionsSet.insert("str");
-
-
-}
-
-std::vector<std::string> parseLine(std::string line) { // vraca labelu, direktivu ili
-    std::vector<std::string> ret(2 , "");
-
-    std::stringstream stream(line , std::ios::in);
-    std::string word;
-    bool firstWord = true;
-    while (!stream.eof()) {
-        stream >> word;
-        if (word.size() > 0 && word[0] == '#') break; // ako nesto pocinje sa # obustavi obradu
-        if (endsWith(word.c_str() , ":")) { // proevi dal je labela
-            if (firstWord) {
-                ret[0] = word.substr(0 , word.size() -1);
-                std::cout << ret[0] << std::endl;
-            }
-            else {
-                // baciti neki izutetak jer labela nije na pocetku
-            }
-        }
-        if (word.size() > 0 && word[0]== '.') { // pocetak direktive
-            if (ret[1] != "") {
-                if (directiveSet.find(word) != directiveSet.end()){
-                    ret[1] = word;
-                }
-                else {
-                    // baciti izuzetak jer directiva ne postoji
-                }
-            }
-            else {
-                // baciti izuzetak jer postoji vec direktiva ili linija
-            }
-            
-
-        }
-
-        firstWord = false;
-    }
-
-    return ret;
+void initRegexs() {
+    allRegex.push_back(std::regex("\\s{0,}([a-zA-z_]{1,}:)\\s{0,}")); // nalazi samu labelu
+    allRegex.push_back(std::regex("\\s{0,}([a-zA-z_]{1,}:){0,1}\\s{0,}(halt|iret|ret|\\.end)\\s{0,}")); // nalazi fje halt iret ret i direktivu .end
+    allRegex.push_back(std::regex("\\s{0,}([a-zA-z_]{1,}:){0,1}\\s{0,}(\\.global|\\.extern)\\s{0,}([a-zA-z_]{1,})(,[a-zA-z_]{1,}){0,}\\s{0,}")); // nalazi .global .extern
+    allRegex.push_back(std::regex("\\s{0,}([a-zA-z_]{1,}:){0,1}\\s{0,}(\\.word)\\s{0,}([a-zA-z_]{1,}|\\d{1,}|0x[\\d|a-f|A-F]{1,}|0X[\\d|a-f|A-F]{1,})(,[a-zA-z_]{1,}|,\\d{1,}|,0x[\\d|a-f|A-F]{1,}|,0X[\\d|a-f|A-F]{1,}){0,}\\s{0,}")); // nalazi .word
+    allRegex.push_back(std::regex("\\s{0,}([a-zA-z_]{1,}:){0,1}\\s{0,}(\\.section)\\s{0,}([a-zA-z_]{1,})\\s{0,}")); // nalazi .section
+    allRegex.push_back(std::regex("\\s{0,}([a-zA-z_]{1,}:){0,1}\\s{0,}(\\.skip)\\s{0,}(\\d{1,}|0x[\\d|a-f|A-F]{1,}|0X[\\d|a-f|A-F]{1,})\\s{0,}")); // nalazi .skip
+    allRegex.push_back(std::regex("\\s{0,}([a-zA-z_]{1,}:){0,1}\\s{0,}(\\.equ)\\s{0,}([a-zA-z_]{1,})\\s{0,},\\s{0,}(\\d{1,}|0x[\\d|a-f|A-F]{1,}|0X[\\d|a-f|A-F]{1,})\\s{0,}")); // nalazi .equ
 }
 
 int parseFile(std::string inputFileName , std::string outputFileName) {
@@ -96,24 +26,62 @@ int parseFile(std::string inputFileName , std::string outputFileName) {
         return 1;
     }
 
-    std::fstream output_file;
+    std::vector<std::string> lines;
+    std::string line;
+    while (std::getline(input_file, line)) {
+        int index = -1 , n = line.size();
+        for (int i = 0; i < n ; i++) {
+            if (line[i] == '#') {
+                index = i;
+                break;
+            }
+        }
+        if (n == 0 || index == 0) continue;
+
+        if (index == -1) lines.push_back(line);
+        else lines.push_back(line.substr(0 , index));
+    }
+
+    input_file.close();
+
+    initRegexs();
+
+    std::cout << allRegex.size() << std::endl;
+
+    for (std::string str : lines) {
+        bool found = false;
+        for (std::regex rx : allRegex) {
+            if (std::regex_match(str ,rx)) {
+                std::cout << "Match string: " << str << std::endl; 
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) std::cout << "Didnt match string: "<< str << std::endl; 
+        
+    }
+
+ /*   std::string regex1 = "\\s{0,}([a-zA-z_]{1,}:){0,1}\\s{0,}(\\.equ)\\s{0,}([a-zA-z_]{1,})\\s{0,},\\s{0,}(\\d{1,}|0x[\\d|a-f|A-F]{1,}|0X[\\d|a-f|A-F]{1,})\\s{0,}";
+    for (std::string str : lines) {
+        if (std::regex_match(str , std::regex(regex1))) {
+            std::cout << "Match string: " << str << std::endl; 
+        }
+        else {
+            std::cout << "Didnt match string: "<< str << std::endl; 
+        }
+    } */
+
+  /*  std::fstream output_file;
     output_file.open(outputFileName , std::ios::out);
     if (!output_file) {
         std::cout << "Nije mogao da kreira izlazni fajl!";
         input_file.close();
         return 1;
     }
+ */
 
-    inicilalizujKolekcije();
-    std::string line;
-    while (!input_file.eof()) {
-        getline(input_file, line);
-        parseLine(line);
-
-    }
-
-
-    output_file.close();
-    input_file.close();
+  //  output_file.close();
+    
     return 0;
 }
