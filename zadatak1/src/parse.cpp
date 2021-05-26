@@ -24,6 +24,14 @@ void initRegexs() {
     allRegex.push_back(std::regex("\\s{0,}([a-zA-z_]{1,}:){0,1}\\s{0,}(call|jmp|jeq|jne|jgt)\\s{0,}(\\*r0|\\*r1|\\*r2|\\*r3|\\*r4|\\*r5|\\*r6|\\*r7|\\*sp|\\*pc|\\*psw|[\\*|\\s]\\d{1,}|[\\*|\\s]0x[\\d|a-f|A-F]{1,}|[\\*|\\s]0X[\\d|a-f|A-F]{1,}|[\\s|\\*|%][a-zA-z_]{1,})\\s{0,}")); // nalazi sa skok instukcije sa svim ostalim adresiranjima
 }
 
+bool checkEmptyLine(std::string line) {
+    for (char c : line) {
+        if (c != ' ' && c != '\t') return false;
+    }
+    return true;
+}
+
+
 int parseFile(std::string inputFileName , std::string outputFileName) {
     std::fstream input_file;
     input_file.open(inputFileName , std::ios::in);
@@ -35,35 +43,53 @@ int parseFile(std::string inputFileName , std::string outputFileName) {
     std::vector<std::string> lines;
     std::string line;
     while (std::getline(input_file, line)) {
-        int index = -1 , n = line.size();
-        for (int i = 0; i < n ; i++) {
-            if (line[i] == '#') {
-                index = i;
-                break;
-            }
-        }
-        if (n == 0 || index == 0) continue;
-
-        if (index == -1) lines.push_back(line);
-        else lines.push_back(line.substr(0 , index));
+        lines.push_back(line);
     }
 
     input_file.close();
 
     initRegexs();
 
+    int numOfLine = 1;
+
     for (std::string str : lines) {
+        int index = -1 , n = str.size();
+
+        if (n == 0 || checkEmptyLine(str)) {
+            numOfLine++;
+            continue;
+        }
+
+        for (int i = 0; i < n ; i++) {
+            if (str[i] == '#') {
+                index = i;
+                break;
+            }
+        }
+        
+        std::string line = str;
+        if (index != -1) line = str.substr(0 , index);
+
+        if (checkEmptyLine(line)) {
+            numOfLine++;
+            continue;
+        }
+
         bool found = false;
         for (std::regex rx : allRegex) {
-            if (std::regex_match(str ,rx)) {
-                std::cout << "Match string: " << str << std::endl; 
+            if (std::regex_match(line ,rx)) {
+                // ovde treba da se obradi linija
                 found = true;
                 break;
             }
         }
 
-        if (!found) std::cout << "Didnt match string: "<< str << std::endl; 
+        if (!found) {
+            std::cout << "Error on line: "<< numOfLine << " . Couldnt match string: "<< line << std::endl; 
+             // exit(1);
+        }
         
+        numOfLine++;
     } 
 
   /*  std::string regex1 = "\\s{0,}([a-zA-z_]{1,}:){0,1}\\s{0,}(call|jmp|jeq|jne|jgt)\\s{0,}(\\*r0|\\*r1|\\*r2|\\*r3|\\*r4|\\*r5|\\*r6|\\*r7|\\*sp|\\*pc|\\*psw|[\\*|\\s]\\d{1,}|[\\*|\\s]0x[\\d|a-f|A-F]{1,}|[\\*|\\s]0X[\\d|a-f|A-F]{1,}|[\\s|\\*|%][a-zA-z_]{1,})\\s{0,}";
