@@ -9,14 +9,9 @@ int Symbol::IDSections=1;
 std::vector<std::string> Symbol::names = {};
 std::vector<Symbol*> Symbol::symbols = {};
 
-Symbol::Symbol(std::string name,int value , char binding, char section, char type, int redBr) {
-    int index = Symbol::getIndexInNames(name);
-    if (index == -1) {
-        this->name = Symbol::names.size();
-        Symbol::names.push_back(name);
-    }
-    else this->name = index;
-
+Symbol::Symbol(int name,int value , char binding, char section, char type, int redBr) {
+    
+    this->name = name;
     this->value = value;
     this->type = type;
     this->binding = binding;
@@ -28,6 +23,11 @@ Symbol::Symbol(std::string name,int value , char binding, char section, char typ
     else this->size = 0;
 }
 
+std::vector<Symbol*> Symbol::getSymbolTable(){
+    return Symbol::symbols;
+}
+
+
 int Symbol::getIndexInNames(std::string name){
     int n = Symbol::names.size();
     for (int i = 0 ; i < n ; i++) {
@@ -36,14 +36,31 @@ int Symbol::getIndexInNames(std::string name){
     return -1;
 }
 
+Symbol* Symbol::getSymbolByName(std::string name) {
+    int index = Symbol::getIndexInNames(name);
+    if (index == -1) return nullptr;
+
+    for (Symbol* sym : Symbol::symbols) {
+        if (sym->name == index) return sym;
+    }
+
+    return nullptr;
+}
+
 Symbol* Symbol::createSymbol(std::string name,int value , char binding, char section, char type){
+
+    int index = Symbol::getIndexInNames(name);
+    if (index != -1) throw DuplicateSymbolException(name);
+    index = Symbol::names.size();
+    Symbol::names.push_back(name);
+    
     Symbol* sym = nullptr;
 
     if (type == symbol_type_section) { // pravljenje nove sekcije
-        sym = new Symbol(name , value , binding , IDSections, type , IDSections);
+        sym = new Symbol(index , value , binding , IDSections, type , IDSections);
         IDSections++;
     }
-    else sym = new Symbol(name , value , binding , section , type, IDSymbols++);
+    else sym = new Symbol(index , value , binding , section , type, IDSymbols++);
     Symbol::symbols.push_back(sym);
     return sym;
 }
@@ -53,15 +70,14 @@ void Symbol::printSymbolTable() {
     std::cout << "RedBr    " << "Name    " << "Value   " << "Size    " << "Type    " << "Binding     " << "Section" << std::endl;
 
     for (Symbol* sym : Symbol::symbols) {
-        if (sym == nullptr) {
-            std::cout << "simbol je nullptr";
-        }
-        std::cout << sym->redBr << "   " << Symbol::names[sym->name] << "   " << sym->value << "    "
+        std::cout << sym->redBr << "   " << Symbol::names[sym->name] << "   " << ((short)sym->value) << "    "
         << sym->size << "     ";
         if (sym->type == symbol_type_function) std::cout << "function   ";
         else if (sym->type == symbol_type_data) std::cout << "data    ";
         else if (sym->type == symbol_type_section) std::cout << "section   ";
         else if (sym->type == symbol_type_absolute) std::cout << "absolute symbol      ";
+        else if (sym->type == symbol_type_undef) std::cout << "undef    ";
+        else if (sym->type == symbol_type_label) std::cout << "labela   ";
 
         if (sym->binding == symbol_binding_local) std::cout << "local    ";
         else if (sym->binding == symbol_binding_global) std::cout << "global   ";
@@ -81,4 +97,14 @@ Symbol* Symbol::getSymbolById(int redBr){
         if (sym->redBr == redBr) return sym;
     }
     return nullptr;
+}
+
+void Symbol::destroySymbolTable() {
+    Symbol::IDSymbols=256;
+    Symbol::IDSections=1;
+    Symbol::names.clear();
+    for (Symbol* sym : Symbol::symbols) {
+        delete sym;
+    }
+    Symbol::symbols.clear();
 }

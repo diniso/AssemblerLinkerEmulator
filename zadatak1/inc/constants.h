@@ -13,9 +13,11 @@
 #define symbol_type_data 1
 #define symbol_type_section 2
 #define symbol_type_absolute 3
+#define symbol_type_undef 4
+#define symbol_type_label 5
 
 #define symbol_binding_local 0
 #define symbol_binding_global 1
 
 #define symbol_undef 0
-#define symbol_abs 255
+#define symbol_abs -127
