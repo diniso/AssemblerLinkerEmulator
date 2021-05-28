@@ -1,5 +1,6 @@
 # file: main.s
-.global myStart,myCounter
+.global myStart,myCounter,nekiNovi
+.extern myCounter,nestoNov,biloSta
 .section myCode
 .equ tim_cfg, 0xFF10
 myStart:

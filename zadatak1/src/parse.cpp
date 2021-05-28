@@ -3,6 +3,7 @@
 #include <fstream>
 #include <vector>
 #include <regex>
+#include "constants.h"
 
 extern int endsWith(const char* string ,const char* end);
 
@@ -31,6 +32,60 @@ bool checkEmptyLine(std::string line) {
     return true;
 }
 
+int getInstructionsLenght(std::string instruction, int adressType1  , int adressType2) {
+    if (instruction == "halt") return 1;
+    if (instruction == "int" && adressType1 == reg_dir) return 2;
+    if (instruction == "iret" || instruction == "ret") return 1;
+
+    if ((instruction == "call" || instruction == "jmp" || instruction == "jeq" || instruction == "jne" || instruction == "jgt")
+        && (adressType1 == reg_indir_displacment || adressType1 == direct || adressType1 == mem_dir || adressType1 == pc_rel)) return 5;
+    if ((instruction == "call" || instruction == "jmp" || instruction == "jeq" || instruction == "jne" || instruction == "jgt") 
+        && (adressType1 == reg_dir || adressType1 == reg_indir ) ) return 3;
+
+    if (instruction == "xchg" && adressType1 == reg_dir && adressType2 == reg_dir) return 2;
+    if ((instruction == "add" || instruction == "sub" || instruction == "mul" || instruction == "div" || instruction == "cmp") 
+    &&  (adressType1 == reg_dir && adressType2 == reg_dir)) return 2;
+    if ((instruction == "and" || instruction == "or" || instruction == "xor" || instruction == "test" )
+    && (adressType1 == reg_dir && adressType2 == reg_dir)) return 2;
+    if (instruction == "not" && adressType1 == reg_dir) return 2;
+    if ((instruction == "shl" || instruction == "shr")
+    && (adressType1 == reg_dir && adressType2 == reg_dir)) return 2;
+
+    if (instruction == "ldr" && adressType1 == reg_dir && 
+    (adressType2 == reg_indir_displacment || adressType2 == direct || adressType2 == mem_dir || adressType2 == pc_rel)) return 5;
+    if (instruction == "str" && adressType1 == reg_dir && 
+    (adressType2 == reg_indir_displacment || adressType2 == mem_dir || adressType2 == pc_rel) ) return 5;
+    if ((instruction == "ldr" || instruction == "str") && adressType1 == reg_dir && 
+    (adressType2 == reg_dir || adressType2 == reg_indir )) return 3;
+    if ((instruction == "push" || instruction == "pop") && adressType1 == reg_dir) return 5;
+
+    return -1;
+}
+
+bool isInstructionJump(std::string instruction) {
+    if ("call" == instruction || "jmp" == instruction || "jeq" == instruction || "jne" == instruction || "jgt" == instruction ) return true;
+    return false;
+}
+
+int getAdressType(std::string value, bool isJumpInstruction) {
+
+    if (value[0] == '%') return pc_rel;
+    if (value[0] != '*' && isJumpInstruction) return direct;
+    if (isJumpInstruction) {
+        return getAdressType(value.substr(1 , value.size()), false);
+    }
+
+    if ("r0" == value || "r1" == value || "r2" == value || "r3" == value || "r4" == value || "r5" == value || "r6" == value || "r7" == value ) return reg_dir;
+    if ("psw" == value || "pc" == value || "sp" == value) return reg_dir;
+
+    if (value[0] == '$') return direct;
+    if (value[0] != '[') return mem_dir;
+    
+    for (char c : value) {
+        if (c == '+') return reg_indir_displacment;
+    }
+    return reg_indir;
+}
 
 int parseFile(std::string inputFileName , std::string outputFileName) {
     std::fstream input_file;
@@ -50,8 +105,14 @@ int parseFile(std::string inputFileName , std::string outputFileName) {
 
     initRegexs();
 
-    int numOfLine = 1;
+    std::vector<std::vector<std::string>> newLines;
 
+    int numOfLine = 1;
+    std::smatch matches;
+    std::string labela = "";
+    int lc = 0;
+    int sectionId = -1;
+    bool end = false;
     for (std::string str : lines) {
         int index = -1 , n = str.size();
 
@@ -77,15 +138,134 @@ int parseFile(std::string inputFileName , std::string outputFileName) {
 
         bool found = false;
         for (std::regex rx : allRegex) {
-            if (std::regex_match(line ,rx)) {
-                // ovde treba da se obradi linija
+            if (std::regex_match(line, matches ,rx)) {
                 found = true;
+
+                std::string prviParam = matches[1].str();
+                if (prviParam != "") {
+                    labela = prviParam.substr(0 , prviParam.size() - 1);
+                }
+                unsigned n = matches.size();
+                if (n == 2 ) break;
+
+                std::string directiveOrInstruction = matches[2].str();
+
+                std::vector<std::string> linija;
+                linija.push_back(directiveOrInstruction);
+
+                if (directiveOrInstruction[0] != '.') {
+                    std::vector<std::string> params;
+                    for (unsigned i = 3 ; i < matches.size(); i++) {
+                        params.push_back(matches[i].str());
+                    } 
+
+                    if (params.size() > 2) {
+                        bool isJump = isInstructionJump(directiveOrInstruction);
+                        int pomeraj = (isJump ? 0 : 1);
+                        std::string paramNovi = (isJump ? "*[" : "[");
+                        paramNovi += params[0+pomeraj];
+                        if (params[2+pomeraj] != "") {
+                                paramNovi += "+";
+                                paramNovi += params[2+pomeraj];
+                        }
+                        paramNovi += "]";
+
+                        std::string prviParam = params[0];
+                        params.clear();
+                        if (!isJump) params.push_back(prviParam);
+                        params.push_back(paramNovi);
+     
+                    }
+                    if (params.size() > 0) {
+                        std::string poslednji = params[params.size() -1];
+                        if (poslednji[0] == ' ') params[params.size() -1] = poslednji.substr(1 , poslednji.size()-1);
+                    }
+
+                    
+                    for (std::string str : params)
+                        linija.push_back(str);
+                    
+                    int paramsSize = params.size();
+                    int adressType1 = (paramsSize == 0 ? -1 : getAdressType(params[0], isInstructionJump(directiveOrInstruction)));
+                    int adressType2 = (paramsSize <= 1 ? -1 : getAdressType(params[1], isInstructionJump(directiveOrInstruction)));
+                    int instructionSize = getInstructionsLenght(directiveOrInstruction,adressType1, adressType2);
+
+                    // treba sad napraviti za dodavanje u tabelu simbola i svaki put da se lc poveca za size
+
+                   // std::cout << directiveOrInstruction << " size: " << instructionSize << std::endl;
+           
+
+
+
+
+                }
+                else {
+ 
+                        if (directiveOrInstruction == ".skip") {
+                            std::string literal = matches[3].str();
+                            linija.push_back(literal); // treba povecati pc za vrednost literala
+
+
+                        }else if (directiveOrInstruction == ".end") {
+                            end = true;
+
+
+                        }else if (directiveOrInstruction == ".equ") {
+                            std::string symbol = matches[3].str();
+                            std::string literal = matches[4].str();
+                            linija.push_back(symbol);
+                            linija.push_back(literal); // napraviti novi simbol
+
+
+                        }else if (directiveOrInstruction == ".section") {
+                            std::string sekcija = matches[3].str(); // treba dodati u tabelu simbola
+                            linija.push_back(sekcija);
+
+
+                        }else if (directiveOrInstruction == ".word") {
+                            
+                            for (int i = 3 ; i < matches.size(); i++) { // opciono ako je simbol da se doda u tabelu simbola
+
+                                std::string literalSimbol = matches[i].str();
+                                if (i > 3) literalSimbol = literalSimbol.substr(1 , literalSimbol.size());
+                                linija.push_back(literalSimbol);
+                            }// treba za svaki element da se pc
+
+
+                        }else if (directiveOrInstruction == ".extern") {
+
+                            for (int i = 3 ; i < matches.size(); i++) { //da se doda u tabelu simbola
+                                std::string simbol = matches[i].str();
+                                if (i > 3) simbol = simbol.substr(1 , simbol.size());
+                                linija.push_back(simbol);
+                            }
+
+
+                        }else if (directiveOrInstruction == ".global") {
+
+                            for (int i = 3 ; i < matches.size(); i++) { //da se doda u tabelu simbola
+                                std::string simbol = matches[i].str();
+                                if (i > 3) simbol = simbol.substr(1 , simbol.size());
+                                linija.push_back(simbol);
+                            }
+                        }
+                    
+            
+                }
+                
+                for (std::string str : linija) {
+                    std::cout << str << " ";
+                }
+                std::cout << std::endl;
+                newLines.push_back(linija);
                 break;
             }
         }
 
+        if (end) break;
+
         if (!found) {
-            std::cout << "Error on line: "<< numOfLine << " . Couldnt match string: "<< line << std::endl; 
+         //   std::cout << "Error on line: "<< numOfLine << " . Couldnt match string: "<< line << std::endl; 
              // exit(1);
         }
         
