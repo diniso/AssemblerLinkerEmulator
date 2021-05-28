@@ -4,6 +4,7 @@
 #include <vector>
 #include <regex>
 #include "constants.h"
+#include "symbol.h"
 
 extern int endsWith(const char* string ,const char* end);
 
@@ -12,8 +13,8 @@ std::vector<std::regex> allRegex;
 void initRegexs() {
     allRegex.push_back(std::regex("\\s{0,}([a-zA-z_]{1,}:)\\s{0,}")); // nalazi samu labelu
     allRegex.push_back(std::regex("\\s{0,}([a-zA-z_]{1,}:){0,1}\\s{0,}(halt|iret|ret|\\.end)\\s{0,}")); // nalazi fje halt iret ret i direktivu .end
-    allRegex.push_back(std::regex("\\s{0,}([a-zA-z_]{1,}:){0,1}\\s{0,}(\\.global|\\.extern)\\s{0,}([a-zA-z_]{1,})(,[a-zA-z_]{1,}){0,}\\s{0,}")); // nalazi .global .extern
-    allRegex.push_back(std::regex("\\s{0,}([a-zA-z_]{1,}:){0,1}\\s{0,}(\\.word)\\s{0,}([a-zA-z_]{1,}|\\d{1,}|0x[\\d|a-f|A-F]{1,}|0X[\\d|a-f|A-F]{1,})(,[a-zA-z_]{1,}|,\\d{1,}|,0x[\\d|a-f|A-F]{1,}|,0X[\\d|a-f|A-F]{1,}){0,}\\s{0,}")); // nalazi .word
+    allRegex.push_back(std::regex("\\s{0,}([a-zA-z_]{1,}:){0,1}\\s{0,}(\\.global|\\.extern)\\s{0,}([a-zA-z_]{1,})(,\\s{0,}[a-zA-z_]{1,}){0,}\\s{0,}")); // nalazi .global .extern
+    allRegex.push_back(std::regex("\\s{0,}([a-zA-z_]{1,}:){0,1}\\s{0,}(\\.word)\\s{0,}([a-zA-z_]{1,}|\\d{1,}|0x[\\d|a-f|A-F]{1,}|0X[\\d|a-f|A-F]{1,})(,\\s{0,}[a-zA-z_]{1,}|,\\s{0,}\\d{1,}|,\\s{0,}0x[\\d|a-f|A-F]{1,}|,\\s{0,}0X[\\d|a-f|A-F]{1,}){0,}\\s{0,}")); // nalazi .word
     allRegex.push_back(std::regex("\\s{0,}([a-zA-z_]{1,}:){0,1}\\s{0,}(\\.section)\\s{0,}([a-zA-z_]{1,})\\s{0,}")); // nalazi .section
     allRegex.push_back(std::regex("\\s{0,}([a-zA-z_]{1,}:){0,1}\\s{0,}(\\.skip)\\s{0,}(\\d{1,}|0x[\\d|a-f|A-F]{1,}|0X[\\d|a-f|A-F]{1,})\\s{0,}")); // nalazi .skip
     allRegex.push_back(std::regex("\\s{0,}([a-zA-z_]{1,}:){0,1}\\s{0,}(\\.equ)\\s{0,}([a-zA-z_]{1,})\\s{0,},\\s{0,}(\\d{1,}|0x[\\d|a-f|A-F]{1,}|0X[\\d|a-f|A-F]{1,})\\s{0,}")); // nalazi .equ
@@ -204,7 +205,7 @@ int parseFile(std::string inputFileName , std::string outputFileName) {
                         if (directiveOrInstruction == ".skip") {
                             std::string literal = matches[3].str();
                             linija.push_back(literal); // treba povecati pc za vrednost literala
-
+                            lc += std::stoi(literal);
 
                         }else if (directiveOrInstruction == ".end") {
                             end = true;
@@ -215,19 +216,24 @@ int parseFile(std::string inputFileName , std::string outputFileName) {
                             std::string literal = matches[4].str();
                             linija.push_back(symbol);
                             linija.push_back(literal); // napraviti novi simbol
-
+                            Symbol::createSymbol(symbol , std::stoi(literal), symbol_binding_local , sectionId , symbol_type_absolute);
 
                         }else if (directiveOrInstruction == ".section") {
                             std::string sekcija = matches[3].str(); // treba dodati u tabelu simbola
                             linija.push_back(sekcija);
+                            Symbol* sym = Symbol::createSymbol(sekcija , 0, symbol_binding_local , sectionId , symbol_type_section);
+                            if (sectionId != -1) Symbol::getSymbolById(sectionId)->size = lc;
+                            lc = 0;
+                            sectionId = sym->section;
 
+                            std::cout << "Sekcija id:" << sectionId << std::endl;
 
                         }else if (directiveOrInstruction == ".word") {
                             
                             for (int i = 3 ; i < matches.size(); i++) { // opciono ako je simbol da se doda u tabelu simbola
 
                                 std::string literalSimbol = matches[i].str();
-                                if (i > 3) literalSimbol = literalSimbol.substr(1 , literalSimbol.size());
+                            //    if (i > 3) literalSimbol = literalSimbol.substr(1 , literalSimbol.size());
                                 linija.push_back(literalSimbol);
                             }// treba za svaki element da se pc
 
@@ -236,7 +242,7 @@ int parseFile(std::string inputFileName , std::string outputFileName) {
 
                             for (int i = 3 ; i < matches.size(); i++) { //da se doda u tabelu simbola
                                 std::string simbol = matches[i].str();
-                                if (i > 3) simbol = simbol.substr(1 , simbol.size());
+                            //    if (i > 3) simbol = simbol.substr(1 , simbol.size());
                                 linija.push_back(simbol);
                             }
 
@@ -245,11 +251,13 @@ int parseFile(std::string inputFileName , std::string outputFileName) {
 
                             for (int i = 3 ; i < matches.size(); i++) { //da se doda u tabelu simbola
                                 std::string simbol = matches[i].str();
-                                if (i > 3) simbol = simbol.substr(1 , simbol.size());
+                            //    if (i > 3) simbol = simbol.substr(1 , simbol.size());
                                 linija.push_back(simbol);
                             }
                         }
                     
+
+                        Symbol::printSymbolTable();
             
                 }
                 

@@ -1,6 +1,6 @@
 # file: main.s
 .global myStart,myCounter,nekiNovi
-.extern myCounter,nestoNov,biloSta
+.extern myCounter, nestoNov, biloSta
 .section myCode
 .equ tim_cfg, 0xFF10
 myStart:
@@ -34,7 +34,7 @@ wait:
  halt
 .section myData
 myCounter:
- .word 0,myCounter,23,0xFF,0xAf42
+ .word 0, myCounter, 23, 0xFF, 0xAf42
  .skip 4
  .skip 0xf4F
 

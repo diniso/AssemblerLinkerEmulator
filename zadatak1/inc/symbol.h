@@ -12,24 +12,22 @@ struct Symbol {
 
 private:
 
-    static int ID;
+    static int IDSymbols;
+    static int IDSections;
     static std::vector<std::string> names;
     static std::vector<Symbol*> symbols;
     static int getIndexInNames(std::string name); // implementirano
 
-    Symbol(std::string name,int value , char binding, char section, char type); // implementirano
+    Symbol(std::string name,int value , char binding, char section, char type, int redBr); // implementirano
 
 
 public:
 
-    static Symbol* getSymbolByName(std::string name);
+    static Symbol* getSymbolById(int redBr); // implementirano
     static Symbol* createSymbol(std::string name,int value , char binding, char section, char type); // implementirano
     static char* getBynaryDataForSymbolTable(int& size);
     static char* getBynaryDataForNameTable(int& size);
-    static void printSymbolTable();
+    static void printSymbolTable(); // implementirano
 
 };
 
-int Symbol::ID=0;
-std::vector<std::string> Symbol::names = {};
-std::vector<Symbol*> Symbol::symbols = {};
