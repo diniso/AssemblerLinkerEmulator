@@ -58,7 +58,7 @@ int getInstructionsLenght(std::string instruction, int adressType1  , int adress
     (adressType2 == reg_indir_displacment || adressType2 == mem_dir || adressType2 == pc_rel) ) return 5;
     if ((instruction == "ldr" || instruction == "str") && adressType1 == reg_dir && 
     (adressType2 == reg_dir || adressType2 == reg_indir )) return 3;
-    if ((instruction == "push" || instruction == "pop") && adressType1 == reg_dir) return 5;
+    if ((instruction == "push" || instruction == "pop") && adressType1 == reg_dir) return 3;
 
     return -1;
 }
