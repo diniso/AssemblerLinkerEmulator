@@ -4,6 +4,7 @@
 #include"constants.h"
 #include"symbol.h"
 
+
 int Symbol::IDSymbols=256;
 int Symbol::IDSections=1;
 std::vector<std::string> Symbol::names = {};

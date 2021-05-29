@@ -5,6 +5,7 @@
 #include <regex>
 #include "constants.h"
 #include "symbol.h"
+#include "relocationrecord.h"
 
 extern int endsWith(const char* string ,const char* end);
 
@@ -60,7 +61,7 @@ int getInstructionsLenght(std::string instruction, int adressType1  , int adress
     (adressType2 == reg_dir || adressType2 == reg_indir )) return 3;
     if ((instruction == "push" || instruction == "pop") && adressType1 == reg_dir) return 3;
 
-    return -1;
+    throw CantCalculateInstrunctionLenghtException("Cant calculate instrunction lenght: " +  instruction + " " + std::to_string(adressType1) + " " + std::to_string(adressType2));
 }
 
 bool isInstructionJump(std::string instruction) {
@@ -79,6 +80,17 @@ unsigned short stringToShort(std::string value) {
             return ret;
 }
 
+char getAdressTypeCode(int adressType) {
+    if (adressType == direct) return directS;
+    if (adressType == reg_dir) return reg_dirS;
+    if (adressType == reg_indir) return reg_indirS;
+    if (adressType == reg_indir_displacment) return reg_indir_displacmentS;
+    if (adressType == mem_dir) return mem_dirS;
+    if (adressType == pc_rel) return pc_relS;
+
+    throw NoSuchAdressTypeException("Cant regognize adress type: " + std::to_string(adressType));
+}
+// ovo bi se valjalo malo popraviti
 int getAdressType(std::string value, bool isJumpInstruction) {
 
     if (value[0] == '%') return pc_rel;
@@ -97,6 +109,136 @@ int getAdressType(std::string value, bool isJumpInstruction) {
         if (c == '+') return reg_indir_displacment;
     }
     return reg_indir;
+}
+
+bool AreBothOperandsReg(std::string instruction) {
+    if (instruction == "add" || instruction == "sub" || instruction == "mul" || instruction == "div" || instruction == "xcgh") return true;
+    if (instruction == "cmp" || instruction == "and" || instruction == "or" || instruction == "xor" || instruction == "test") return true;
+    if (instruction == "shl" || instruction == "shr" ) return true;
+
+    return false;
+}
+
+bool DoInstructionHaveOperands(std::string instruction) {
+    if (instruction == "halt" || instruction == "ret" || instruction == "iret") return false;
+
+    return true;
+}
+
+char getInstructionCode(std::string instruction) {
+    if (instruction == "halt") return Ihalt;
+    if (instruction == "int") return Iint;
+    if (instruction == "iret") return Iiret;
+    if (instruction == "call") return Icall;
+    if (instruction == "ret") return Iret;
+    if (instruction == "jmp") return Ijmp;
+    if (instruction == "jeq") return Ijeq;
+    if (instruction == "jne") return Ijne;
+    if (instruction == "jgt") return Ijgt;
+    if (instruction == "push") return Ipush;
+    if (instruction == "pop") return Ipop;
+    if (instruction == "xchg") return Ixchg;
+    if (instruction == "add") return Iadd;
+    if (instruction == "sub") return Isub;
+    if (instruction == "mul") return Imul;
+    if (instruction == "div") return Idiv;
+    if (instruction == "cmp") return Icmp;
+    if (instruction == "not") return Inot;
+    if (instruction == "and") return Iand;
+    if (instruction == "or") return Ior;
+    if (instruction == "xor") return Ixor;
+    if (instruction == "test") return Itest;
+    if (instruction == "shl") return Ishl;
+    if (instruction == "shr") return Ishr;
+    if (instruction == "ldr") return Ildr;
+    if (instruction == "str") return Istr;
+
+    throw NoSuchInstructionException("Instruction: " + instruction + " dont exists");
+}
+
+char getCodeFor2RegInstruction(std::string regD, std::string regS ) {
+    char ans = 0;
+
+    if (regD == "r0") ans |= R0D;
+    else if (regD == "r1") ans |= R1D;
+    else if (regD == "r2") ans |= R2D;
+    else if (regD == "r3") ans |= R3D;
+    else if (regD == "r4") ans |= R4D;
+    else if (regD == "r5") ans |= R5D;
+    else if (regD == "r6") ans |= R6D;
+    else if (regD == "r7") ans |= R7D;
+    else if (regD == "pc") ans |= PCD;
+    else if (regD == "psw") ans |= PSWD;
+    else if (regD == "sp") ans |= SPD;
+
+    if (regS == "r0") ans |= R0S;
+    else if (regS == "r1") ans |= R1S;
+    else if (regS == "r2") ans |= R2S;
+    else if (regS == "r3") ans |= R3S;
+    else if (regS == "r4") ans |= R4S;
+    else if (regS == "r5") ans |= R5S;
+    else if (regS == "r6") ans |= R6S;
+    else if (regS == "r7") ans |= R7S;
+    else if (regS == "pc") ans |= PCS;
+    else if (regS == "psw") ans |= PSWS;
+    else if (regS == "sp") ans |= SPS;
+
+    return ans;
+}
+
+void printArrayAsBytes(char* arr , int size , int sectionId) {
+    std::cout << "Velicina sekcije: " << sectionId << " iznosi: " << size << std::endl;
+    for (int i = 0 ; i < size ; i++) {
+        printf("%.2x " , (unsigned char)arr[i]);
+    }
+    std::cout << std::endl;
+        
+
+}
+
+std::vector<std::string> getSymbolRegLiteralFromInput(std::string sym , bool isJumpInstruction , int adressType) {
+    std::vector<std::string> ans;
+    if (adressType == reg_dir || adressType == mem_dir) {
+        if (isJumpInstruction) ans.push_back(sym.substr(1 , sym.size() -1));
+        else ans.push_back(sym);
+    }
+    else if (adressType == reg_indir) {
+        if (isJumpInstruction) ans.push_back(sym.substr(2 , sym.size() -3));
+        else ans.push_back(sym.substr(1 , sym.size() -2));
+    }
+    else if (adressType == reg_indir_displacment) {
+        if (isJumpInstruction) sym = sym.substr(2 , sym.size() -3);
+        else sym = sym.substr(1 , sym.size() -2);
+
+        for (int i = 0 ; i < sym.size() ; i++) {
+            if (sym[i] == '+') {
+                ans.push_back(sym.substr(0 , i));
+                ans.push_back(sym.substr(i + 1 , sym.size() - i - 1));
+                break;
+            }
+        }
+    }
+    else if (adressType == pc_rel) {
+        ans.push_back("pc");
+        ans.push_back(sym.substr(1 , sym.size() -1));
+    }
+    else if (adressType == direct) {
+        if (isJumpInstruction) ans.push_back(sym);
+        else ans.push_back(sym.substr(1 , sym.size() - 1));
+    }
+
+    return ans;
+}
+
+unsigned short getShortValueForSymbolLiteral(std::string literalSymbol) {
+    if (literalSymbol[0] < '0' || literalSymbol[0] > '9') { // symbol
+        Symbol* sym = Symbol::getSymbolByName(literalSymbol);
+        if (sym == nullptr) throw UndefinedSymbolException("Symbol undefined");
+
+        return sym->value;
+    }
+
+    return stringToShort(literalSymbol);
 }
 
 int parseFile(std::string inputFileName , std::string outputFileName) {
@@ -325,30 +467,197 @@ int parseFile(std::string inputFileName , std::string outputFileName) {
         std::cout << gse.getMessage() << std::endl;
         exit(2);
     }
+    catch (CantCalculateInstrunctionLenghtException& ex) {
+        std::cout << ex.getMessage() << std::endl;
+        exit(7);
+    }
     
-
-    Symbol::printSymbolTable();
     lines.clear();
+
+    lc = 0;
+    sectionId = -1;
+    end = false;
+
+    char* data = nullptr;
+    int size = 0;
 
     try {
         for (std::vector<std::string>& vec : newLines) {
             if (vec[0] == ".global") {
                 Symbol* sym = Symbol::getSymbolByName(vec[1]);
+                if (sym == nullptr) throw UndefinedSymbolException("Error on directive .global " + vec[1] + " : No Such symbol.");
                 sym->binding = symbol_binding_global;
+                continue;
             }
-            for (std::string str : vec) {
-                std::cout << str << " ";
+            else if (vec[0] == ".section") {
+                if (sectionId != -1) { // snimi u fajl
+                    printArrayAsBytes(data, size , sectionId);
+                    delete data;
+                }
+                Symbol* sym = Symbol::getSymbolByName(vec[1]);
+                if (sym == nullptr) throw UndefinedSymbolException("Error on directive .section " + vec[1] + " : No Such symbol.");
+                sectionId = sym->section;
+                data = new char[sym->size];
+                size = sym->size;
+                lc = 0;
+                
+                continue;
             }
-            std::cout << std::endl;
+            else if (vec[0] == ".word") {
+                int i = 1;
+                try {
+                    for (i = 1 ; i < vec.size() ; i++) {
+                        unsigned short value = getShortValueForSymbolLiteral(vec[i]);
+
+                        if (vec[i][0] < '0' || vec[i][0] > '9') { // symbol
+                            Symbol* sym = Symbol::getSymbolByName(vec[i]);
+                            if (sym->section != symbol_abs) {
+                                if (sym->binding == symbol_binding_local) {
+                                    RelocationRecord::createRelocationRecord(sym->section , lc,  sectionId , relocation_absolute);
+                                }                         
+                                else {
+                                    RelocationRecord::createRelocationRecord(sym->redBr , lc ,  sectionId , relocation_absolute);
+                                    value = 0;
+                                }
+                            }
+                            
+                        }
+                        data[lc++] = (shortMaskHigherBits & value) >> 8;;
+                        data[lc++] = value & shortMaskLowerBits;
+
+                    }
+                }
+                catch (UndefinedSymbolException& use) {
+                    throw UndefinedSymbolException("Error on directive .word " + vec[i] + " : No Such symbol.");
+                }
+                
+
+                continue;
+            }
+            else if (vec[0] == ".skip") {
+                unsigned short value = stringToShort(vec[1]);
+                for (int i = 0 ; i < value ; i++) {
+                    data[lc++] = 0;
+                }
+                continue;
+            }
+            else { // instrukcije
+
+                std::string instruction = vec[0];
+                data[lc++] = getInstructionCode(instruction);
+                if (!DoInstructionHaveOperands(instruction)) continue;
+
+                if (AreBothOperandsReg(instruction)) {
+                    data[lc++] = getCodeFor2RegInstruction(vec[1] , vec[2]);
+                    continue;
+                }
+
+                if (instruction == "int" || instruction == "not"  || instruction == "pop" || instruction == "push") {
+                    data[lc++] = (getCodeFor2RegInstruction(vec[1] , "") | 0x0f);
+                    if (instruction == "pop") {
+                        data[lc++] = reg_indirS | post_sum;
+                    }
+                    else if (instruction == "push") {
+                        data[lc++] = reg_indirS | pre_sub;
+                    }
+                    continue;
+                }
+
+                int adressType;
+                std::vector<std::string> params;
+                // ovde jos ostalo instrukcije skoka i ldt i str moze doci do rekolacionih zapisa
+                if (isInstructionJump(instruction)) {
+                    adressType = getAdressType(vec[1] , true);
+                    
+                    params = getSymbolRegLiteralFromInput(vec[1] , true , adressType);
+                    if (adressType == reg_dir || adressType == reg_indir || adressType == reg_indir_displacment
+                        ||  adressType == pc_rel) {
+                        data[lc++] = (getCodeFor2RegInstruction("" , params[0]) | 0xf0);
+                    }     
+                    else data[lc++] = 0xff;
+
+                    data[lc++] = (getAdressTypeCode(adressType) | no_update);
+                    
+                }else {
+                    adressType = getAdressType(vec[2] , false);
+                    params = getSymbolRegLiteralFromInput(vec[2] , false , adressType);
+                    if (adressType == reg_dir || adressType == reg_indir || adressType == reg_indir_displacment
+                        ||  adressType == pc_rel) {
+                        data[lc++] = (getCodeFor2RegInstruction(vec[1] , params[0]));
+                    }     
+                    else data[lc++] = (getCodeFor2RegInstruction(vec[1] , "") | 0x0f);
+
+                    data[lc++] = (getAdressTypeCode(adressType) | no_update);
+                }
+
+                // treba da se doda pomeraj ako nije reg_dir i reg_indir
+                if (adressType == direct || adressType == mem_dir || adressType == reg_indir_displacment
+                        ||  adressType == pc_rel) {
+
+                            try {
+                                std::string literalSymbol = ((adressType == direct || adressType == mem_dir) ? params[0] : params[1]);
+                                unsigned short value = getShortValueForSymbolLiteral(literalSymbol);
+                                 if (literalSymbol[0] < '0' || literalSymbol[0] > '9') { // symbol
+                                    Symbol* sym = Symbol::getSymbolByName(literalSymbol);
+                                    if (sym->section != symbol_abs) {
+                                        if (adressType != pc_rel) {
+                                            if (sym->binding == symbol_binding_local) {
+                                                RelocationRecord::createRelocationRecord(sym->section , lc,  sectionId , relocation_absolute);         
+                                            }                         
+                                            else {
+                                                RelocationRecord::createRelocationRecord(sym->redBr , lc ,  sectionId , relocation_absolute);
+                                                value = 0;
+                                            }
+                                        }
+                                        else { // ovo treba da se popravi
+                                            if (sym->binding == symbol_binding_local) {
+                                                
+                                                if (sym->section != sectionId) RelocationRecord::createRelocationRecord(sym->section , lc,  sectionId , relocation_pc_rel);
+                                                value += addend;
+                                            }                         
+                                            else {
+                                                if (sym->section != sectionId) RelocationRecord::createRelocationRecord(sym->redBr , lc ,  sectionId , relocation_pc_rel);
+                                                value = addend;
+                                            }
+                                        } 
+                                    }
+                                    
+                                    
+                                } 
+                                data[lc++] = (shortMaskHigherBits & value) >> 8;
+                                data[lc++] = shortMaskLowerBits & value;
+
+                            }
+                            catch (UndefinedSymbolException& use) {
+                                throw UndefinedSymbolException("Error on instruction :" + vec[0] + " " + vec[1] + ".Symbol undefined");
+                            }    
+                        
+                        
+                    } 
+                
+            }
+            
         }
     }
-    catch (DuplicateSymbolException& dup) {
-     //   std::string symbol = dup.getMessage();
-     //   std::cout << "Duplicate symbol: " << symbol << " on line:" << numOfLine << std::endl;
-        exit(1);
+    catch (UndefinedSymbolException& dup) {
+        std::cout << dup.getMessage() << std::endl;
+        exit(4);
+    }
+    catch (NoSuchInstructionException& nse) {
+        std::cout << nse.getMessage() << std::endl;
+        exit(5);
+    }
+    catch (NoSuchAdressTypeException& nate) {
+        std::cout << nate.getMessage() << std::endl;
+        exit(6);
     }
 
+
+    printArrayAsBytes(data, size , sectionId);
+    delete data;
     Symbol::printSymbolTable();
+    RelocationRecord::printRelocationRecords();
+    RelocationRecord::deleteRelocationRecords();
     Symbol::destroySymbolTable();
 
  /*   std::fstream output_file;

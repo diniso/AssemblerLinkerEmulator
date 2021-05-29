@@ -27,11 +27,9 @@ public:
     static Symbol* getSymbolByName(std::string name); // implementirano
     static Symbol* getSymbolById(int redBr); // implementirano
     static Symbol* createSymbol(std::string name,int value , char binding, char section, char type); // implementirano
-    static char* getBynaryDataForSymbolTable(int& size);
-    static char* getBynaryDataForNameTable(int& size);
     static void printSymbolTable(); // implementirano
     static std::vector<Symbol*> getSymbolTable(); // implementirano
-    static void destroySymbolTable();
+    static void destroySymbolTable(); // implementirano
 
 };
 
