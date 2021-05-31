@@ -479,10 +479,13 @@ int parseFile(std::string inputFileName , std::string outputFileName) {
     std::fstream output_file;
     output_file.open(outputFileName , std::ios::out | std::ios::binary);
     if (!output_file) {
-        std::cout << "Nije mogao da kreira izlazni fajl!";
-        input_file.close();
+        std::cout << "Nije mogao da kreira izlazni fajl! " << outputFileName << std::endl;
         return 1;
     }
+
+    HeaderTable* headertable = new HeaderTable(); 
+    output_file.write((char*)headertable , sizeof(HeaderTable));
+    
 
     lc = 0;
     sectionId = -1;
@@ -675,7 +678,7 @@ int parseFile(std::string inputFileName , std::string outputFileName) {
     delete data;    // ovde sam zavrsio sa korisnicki sekcijama - treba dodati tabelu simbola relokacije i tabelu stringova 
     newLines.clear();
 
-    HeaderTable* headertable = new HeaderTable(); 
+    
 
     Symbol* tab = Symbol::createSymbol(SECTION_SYMTAB , 0 , symbol_binding_local , 0 , symbol_type_section);
     Symbol* rel = Symbol::createSymbol(SECTION_REL , 0 , symbol_binding_local , 0 , symbol_type_section);
@@ -714,8 +717,17 @@ int parseFile(std::string inputFileName , std::string outputFileName) {
 
     for (SectionHeader* sh : sectionHeaders) output_file.write((char*) sh , sizeof(SectionHeader));
 
-    output_file.seekg(0, std::ios::beg);
-    output_file.write((char*)headertable , sizeof(HeaderTable));
+
+    output_file.seekg(32, std::ios::beg);
+    output_file.write((char*) &headertable->e_shoff, 4);
+    output_file.seekg(sizeof(HeaderTable) - 4, std::ios::beg);
+    output_file.write((char*)&headertable->e_shnum , 2);
+    output_file.write((char*)&headertable->e_shstrndx , 2);
+
+  //  std::cout << headertable->e_shoff  << " " << headertable->e_shnum << " " << headertable->e_shstrndx << std::endl;
+    
+    Symbol::printSymbolTable();
+  //  RelocationRecord::printRelocationRecords();
 
     delete headertable;
 
