@@ -572,7 +572,8 @@ int parseFile(std::string inputFileName , std::string outputFileName) {
                 }
 
                 if (instruction == "int" || instruction == "not"  || instruction == "pop" || instruction == "push") {
-                    data[lc++] = (getCodeFor2RegInstruction(vec[1] , "") | 0x0f);
+                    if (instruction == "pop" || instruction == "push")  data[lc++] = (getCodeFor2RegInstruction(vec[1] , "sp"));
+                    else data[lc++] = (getCodeFor2RegInstruction(vec[1] , ""));
                     if (instruction == "pop") {
                         data[lc++] = reg_indirS | post_sum;
                     }
@@ -726,7 +727,7 @@ int parseFile(std::string inputFileName , std::string outputFileName) {
 
   //  std::cout << headertable->e_shoff  << " " << headertable->e_shnum << " " << headertable->e_shstrndx << std::endl;
     
-    Symbol::printSymbolTable();
+  //  Symbol::printSymbolTable();
   //  RelocationRecord::printRelocationRecords();
 
     delete headertable;
