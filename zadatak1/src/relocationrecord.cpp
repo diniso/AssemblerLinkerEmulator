@@ -6,10 +6,15 @@
 
 std::vector<RelocationRecord*> RelocationRecord::records = {};
 
+std::vector<RelocationRecord*> RelocationRecord::getAllRecords() {
+    return RelocationRecord::records;
+}
+
 void RelocationRecord::deleteRelocationRecords(){
     for (RelocationRecord* rec : RelocationRecord::records) {
         delete rec;
     }
+    RelocationRecord::records.clear();
 }
 
 RelocationRecord::RelocationRecord(int symId , int ofsset , char section , char recolationType){

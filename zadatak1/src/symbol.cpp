@@ -10,6 +10,10 @@ int Symbol::IDSections=1;
 std::vector<std::string> Symbol::names = {};
 std::vector<Symbol*> Symbol::symbols = {};
 
+std::vector<std::string> Symbol::getStringTable() {
+    return Symbol::names;
+}
+
 Symbol::Symbol(int name,int value , char binding, char section, char type, int redBr) {
     
     this->name = name;

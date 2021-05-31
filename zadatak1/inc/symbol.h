@@ -3,7 +3,7 @@
 #include "myexceptions.h"
 
 struct Symbol {
-    int name; // offset u nizu imena
+    int name; // offset u nizu imena ili u string sekciji
     int size;
     int redBr;
     int value; // offset u sekciji
@@ -29,6 +29,7 @@ public:
     static Symbol* createSymbol(std::string name,int value , char binding, char section, char type); // implementirano
     static void printSymbolTable(); // implementirano
     static std::vector<Symbol*> getSymbolTable(); // implementirano
+    static std::vector<std::string> getStringTable(); // implementirano
     static void destroySymbolTable(); // implementirano
 
 };

@@ -6,6 +6,7 @@
 #include "constants.h"
 #include "symbol.h"
 #include "relocationrecord.h"
+#include "headers.h"
 
 extern int endsWith(const char* string ,const char* end);
 
@@ -473,11 +474,23 @@ int parseFile(std::string inputFileName , std::string outputFileName) {
     }
     
     lines.clear();
+    allRegex.clear();
+
+    std::fstream output_file;
+    output_file.open(outputFileName , std::ios::out | std::ios::binary);
+    if (!output_file) {
+        std::cout << "Nije mogao da kreira izlazni fajl!";
+        input_file.close();
+        return 1;
+    }
 
     lc = 0;
     sectionId = -1;
     end = false;
 
+
+    int numOfSections = 0;
+    int sizeOfSections = 0;
     char* data = nullptr;
     int size = 0;
 
@@ -491,7 +504,10 @@ int parseFile(std::string inputFileName , std::string outputFileName) {
             }
             else if (vec[0] == ".section") {
                 if (sectionId != -1) { // snimi u fajl
-                    printArrayAsBytes(data, size , sectionId);
+                    output_file.write(data, size);
+                    SectionHeader::createSectionHeader(sectionId , SHT_PROGBITS , size ,sizeOfSections + sizeof(HeaderTable) );
+                    numOfSections++;
+                    sizeOfSections += size;        
                     delete data;
                 }
                 Symbol* sym = Symbol::getSymbolByName(vec[1]);
@@ -652,24 +668,64 @@ int parseFile(std::string inputFileName , std::string outputFileName) {
         exit(6);
     }
 
+    output_file.write(data, size);
+    SectionHeader::createSectionHeader(sectionId , SHT_PROGBITS , size ,sizeOfSections + sizeof(HeaderTable) );
+    numOfSections++;
+    sizeOfSections += size;
+    delete data;    // ovde sam zavrsio sa korisnicki sekcijama - treba dodati tabelu simbola relokacije i tabelu stringova 
+    newLines.clear();
 
-    printArrayAsBytes(data, size , sectionId);
-    delete data;
-    Symbol::printSymbolTable();
-    RelocationRecord::printRelocationRecords();
+    HeaderTable* headertable = new HeaderTable(); 
+
+    Symbol* tab = Symbol::createSymbol(SECTION_SYMTAB , 0 , symbol_binding_local , 0 , symbol_type_section);
+    Symbol* rel = Symbol::createSymbol(SECTION_REL , 0 , symbol_binding_local , 0 , symbol_type_section);
+    Symbol* str = Symbol::createSymbol(SECTION_STRTAB , 0 , symbol_binding_local , 0 , symbol_type_section);
+
+    std::vector<Symbol*> symbols =  Symbol::getSymbolTable();
+    std::vector<std::string> strings = Symbol::getStringTable();
+    std::vector<RelocationRecord*> records = RelocationRecord::getAllRecords();
+    tab->size = symbols.size() * sizeof(Symbol);
+    rel->size = records.size() * sizeof(RelocationRecord);
+
+
+    int velicinaStr = 0;
+    for (std::string strin : strings) {
+        const char* bytes = strin.c_str();
+        velicinaStr += strlen(bytes) + 1;
+        output_file.write(bytes , strlen(bytes) + 1);
+    }
+    str->size = velicinaStr;
+
+    for (RelocationRecord* rec : records) output_file.write((char*)rec , sizeof(RelocationRecord));
+    for (Symbol* sym : symbols) output_file.write((char*)sym , sizeof(Symbol));
+
+
+    SectionHeader::createSectionHeader(str->redBr , SHT_STRTAB , str->size ,sizeOfSections + sizeof(HeaderTable), strings.size() );
+    sizeOfSections += str->size; headertable->e_shstrndx = numOfSections; numOfSections++;
+    SectionHeader::createSectionHeader(rel->redBr , SHT_RELA , rel->size ,sizeOfSections + sizeof(HeaderTable) , records.size());
+    sizeOfSections += rel->size; numOfSections++;
+    SectionHeader::createSectionHeader(tab->size , SHT_SYMTAB , tab->size ,sizeOfSections + sizeof(HeaderTable),  symbols.size());
+    sizeOfSections += tab->size; numOfSections++;
+    
+
+    std::vector<SectionHeader*> sectionHeaders = SectionHeader::getSectionHeaders();
+    headertable->e_shnum = sectionHeaders.size();
+    headertable->e_shoff = sizeOfSections + sizeof(HeaderTable);
+
+    for (SectionHeader* sh : sectionHeaders) output_file.write((char*) sh , sizeof(SectionHeader));
+
+    output_file.seekg(0, std::ios::beg);
+    output_file.write((char*)headertable , sizeof(HeaderTable));
+
+    delete headertable;
+
     RelocationRecord::deleteRelocationRecords();
     Symbol::destroySymbolTable();
-
- /*   std::fstream output_file;
-    output_file.open(outputFileName , std::ios::out);
-    if (!output_file) {
-        std::cout << "Nije mogao da kreira izlazni fajl!";
-        input_file.close();
-        return 1;
-    }
+    SectionHeader::destroySectionHeaders();
+    
  
 
-    output_file.close(); */
+    output_file.close(); 
     
     return 0;
 }

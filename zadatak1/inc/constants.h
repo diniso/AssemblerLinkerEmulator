@@ -27,6 +27,26 @@
 
 #define shortMaskHigherBits 0xff00
 #define shortMaskLowerBits 0x00ff
+// konstante za zaglavlje
+#define little_endian 0x01
+#define ELFCLASS16 0x03
+#define ELFVERSION 0x01
+#define FILE_RELOCATABLE 1
+#define FILE_EXECUTABLE 2
+#define MY_ARCHITECTURE 0x0100
+
+#define SHT_NULL 0x00
+#define SHT_PROGBITS 0x01
+#define SHT_SYMTAB 0x02
+#define SHT_STRTAB 0x03
+#define SHT_RELA 0x04
+
+#define SHT_NOFLAGS 0
+
+#define SECTION_SYMTAB ".symtab"
+#define SECTION_REL ".rel"
+#define SECTION_STRTAB ".strtab"
+
 
 // instrukcije sve su 1 bajt
 #define Ihalt 0x00
@@ -86,7 +106,7 @@
 #define reg_indirS 0x02
 #define reg_indir_displacmentS 0x03
 #define mem_dirS 0x04
-#define pc_relS 0x03
+#define pc_relS 0x05
 
 #define no_update 0x00
 #define pre_sub 0x10
