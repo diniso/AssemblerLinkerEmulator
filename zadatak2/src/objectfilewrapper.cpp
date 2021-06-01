@@ -79,10 +79,27 @@ ObjectFileWrapper* ObjectFileWrapper::createObjectWrapper(std::string inputFileN
     for (int i = 0 ; i < sections[strSekcija+2]->sh_entsize; i++) {
         Symbol* s = (Symbol*) malloc(sizeof(Symbol));
         file.read((char*)s , sizeof(Symbol));
+        if (ofw->symbolNames[s->name] == SECTION_SYMTAB || ofw->symbolNames[s->name] == SECTION_REL || ofw->symbolNames[s->name] == SECTION_STRTAB
+            || (s->type != symbol_type_section && s->binding != symbol_binding_global)) {
+                free(s);
+                continue;
+            }
         ofw->symbols.insert(std::pair<Symbol* , char*> (s, nullptr));
     } // ucitani symboli
 
-    // jos treba da se ucitaju sadrzaji sekcija
+    for (auto& par : ofw->symbols) {
+        if (par.first->type != symbol_type_section) continue;
+
+        file.seekg(sections[par.first->redBr-1]->sh_offset , std::ios::beg);
+        par.second = (char*)malloc(par.first->size);
+
+        for (int i = 0 ; i < par.first->size ; i++) {
+            file.read(par.second + i , 1);
+        //    printf("%.2x " , (unsigned char)par.second[i]);
+        }
+        //std::cout << std::endl;
+
+    }
     
 
     delete ht;

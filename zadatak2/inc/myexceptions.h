@@ -11,6 +11,18 @@ private:
    std::string msg_;
 };
 
+struct UndefinedSymbolException{
+   UndefinedSymbolException(std::string msg) {
+       msg_ = msg;
+   }
+  ~UndefinedSymbolException() {}
+
+   std::string getMessage() const {return(msg_);}
+private:
+   std::string msg_;
+};
+
+
 struct CantOpenFileException{
    CantOpenFileException(std::string msg) {
        msg_ = msg;

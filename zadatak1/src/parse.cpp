@@ -508,6 +508,7 @@ int parseFile(std::string inputFileName , std::string outputFileName) {
             else if (vec[0] == ".section") {
                 if (sectionId != -1) { // snimi u fajl
                     output_file.write(data, size);
+              //      printArrayAsBytes(data , size , sectionId);
                     SectionHeader::createSectionHeader(sectionId , SHT_PROGBITS , size ,sizeOfSections + sizeof(HeaderTable) );
                     numOfSections++;
                     sizeOfSections += size;        
@@ -673,6 +674,7 @@ int parseFile(std::string inputFileName , std::string outputFileName) {
     }
 
     output_file.write(data, size);
+  //  printArrayAsBytes(data , size , sectionId);
     SectionHeader::createSectionHeader(sectionId , SHT_PROGBITS , size ,sizeOfSections + sizeof(HeaderTable) );
     numOfSections++;
     sizeOfSections += size;
