@@ -55,3 +55,26 @@ struct NotRelocatableObjectFileException{
 private:
    std::string msg_;
 };
+
+struct CantFindAdressException{
+   CantFindAdressException(std::string msg) {
+       msg_ = msg;
+   }
+  ~CantFindAdressException() {}
+
+   std::string getMessage() const {return(msg_);}
+private:
+   std::string msg_;
+};
+
+
+struct AdressOverlapesException{
+   AdressOverlapesException(std::string msg) {
+       msg_ = msg;
+   }
+  ~AdressOverlapesException() {}
+
+   std::string getMessage() const {return(msg_);}
+private:
+   std::string msg_;
+};

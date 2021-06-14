@@ -11,7 +11,7 @@ HeaderTable::HeaderTable() {
     this->e_ident[3] = 'F';
     this->e_ident[4] = ELFCLASS16;
     this->e_ident[5] = little_endian;
-    this->e_ident[7] = ELFVERSION;
+    this->e_ident[6] = ELFVERSION;
 
     this->e_type = FILE_RELOCATABLE;
     this->e_machine = MY_ARCHITECTURE;

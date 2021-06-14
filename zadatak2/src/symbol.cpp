@@ -159,6 +159,13 @@ void Symbol::createNewRelocationRecords(std::vector<RelocationRecord*>& records,
     }  
 }
 
+Symbol* Symbol::getSymbolById(std::unordered_map<Symbol*, char*>& symbols, int redBr) {
+    for (auto& par : symbols) {
+        if (par.first->redBr == redBr) return par.first;
+    }
+    return nullptr;
+}
+
 void Symbol::printSymbolTable(std::unordered_map<Symbol*, char*>& symbols, std::vector<std::string>& names) {
 
     std::cout << std::endl;
@@ -166,7 +173,7 @@ void Symbol::printSymbolTable(std::unordered_map<Symbol*, char*>& symbols, std::
 
     for (auto par : symbols) {
         Symbol* sym = par.first;
-        std::cout << sym->redBr << "   " << names[sym->name] << "   " << ((short)sym->value) << "    "
+        std::cout <<  std::hex <<sym->redBr << "   " << names[sym->name] << "   " << ((short)sym->value) << "    "
         << sym->size << "     ";
         if (sym->type == symbol_type_function) std::cout << "function   ";
         else if (sym->type == symbol_type_data) std::cout << "data    ";

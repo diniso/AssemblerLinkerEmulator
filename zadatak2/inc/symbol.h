@@ -20,6 +20,7 @@ struct Symbol {
     static void createNewRelocationRecords(std::vector<RelocationRecord*>& records, std::unordered_map<Symbol*, char*>& symbols, std::vector<std::string>& names, ObjectFileWrapper* ofw);
     static Symbol* getSymbolByName(std::unordered_map<Symbol*, char*>& symbols,  std::vector<std::string>& names , std::string name);
     Symbol() {}
+    static Symbol* getSymbolById(std::unordered_map<Symbol*, char*>& symbols, int redBr);
 
     static std::unordered_set<std::string> undefined;
 
