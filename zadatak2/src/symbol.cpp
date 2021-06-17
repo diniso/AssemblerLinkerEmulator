@@ -203,3 +203,26 @@ void Symbol::printSymbolTable(std::unordered_map<Symbol*, char*>& symbols, std::
 
     std::cout << std::endl;
 }
+
+Symbol* Symbol::createSymbol(std::unordered_map<Symbol*, char*>& symbols,  std::vector<std::string>& names ,std::string name,int value , char binding, char section, char type){
+
+    int index = -1;
+    for (int i = 0 ; i < names.size() ; i++) {
+        if (names[i] == name) {
+            index = i;
+        }
+    }
+    if (index != -1) throw DuplicateSymbolException(name);
+    index = names.size();
+    names.push_back(name);
+    
+    Symbol* sym = nullptr;
+
+    if (type == symbol_type_section) { // pravljenje nove sekcije
+        sym = new Symbol(index , value , binding , IDSections, type , IDSections);
+        IDSections++;
+    }
+    else sym = new Symbol(index , value , binding , section , type, IDSymbols++);
+    symbols.insert(std::pair<Symbol* , char*>(sym, nullptr));
+    return sym;
+}

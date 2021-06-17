@@ -4,6 +4,7 @@
 #include <vector>
 #include <algorithm>
 #include <fstream>
+#include <string.h>
 
 #include "objectfilewrapper.h"
 #include "myexceptions.h"
@@ -11,6 +12,7 @@
 #include "relocationrecord.h"
 #include "symbolmappings.h"
 #include "constants_assembler.h"
+#include "headers.h"
 
 std::vector<ObjectFileWrapper*> extractedFiles;
 
@@ -113,6 +115,7 @@ int parseFiles(std::vector<std::string>& inputFiles , std::string outputFile , b
             Symbol::createNewRelocationRecords(records , symbols ,names, ofw);
         } 
 
+
         if (isExeFile) {
             setAdresses (mapaAdresa, symbols, names);
 
@@ -138,23 +141,24 @@ int parseFiles(std::vector<std::string>& inputFiles , std::string outputFile , b
                         sym = par.first;
                     }
                 }
-                sym = Symbol::getSymbolById(symbols , sym->section);
+            //    sym = Symbol::getSymbolById(symbols , sym->section);
 
+           //     printSection(data, sec->size);
 
                 short value = (data[rec->offset + 1] | (data[rec->offset] << 8));
                 value += ((short)sym->value);
+                if (rec->relocationType == relocation_pc_rel) {
+                    value -= sec->value;
+                    value -= rec->offset;
+                }
+                
                 data[rec->offset] = (shortMaskHigherBits & value) >> 8;
                 data[rec->offset+1] = value & shortMaskLowerBits; 
+
+            //    printSection(data, sec->size);
+
+             //   std::cout << "Zavrsen zapis." <<std::endl << std::endl;
             }
-
-       /*     for (auto& par : symbols) {
-                if (par.second == nullptr) continue;
-
-                std::cout << "Sekcija: " << names[par.first->name] << std::endl;
-                printSection(par.second , par.first->size);
-
-                //std::endl;
-            } */
 
             std::fstream output_file;
             output_file.open(outputFile , std::ios::out | std::ios::binary);
@@ -180,15 +184,80 @@ int parseFiles(std::vector<std::string>& inputFiles , std::string outputFile , b
 
         }else {
 
+            std::fstream output_file;
+            output_file.open(outputFile , std::ios::out | std::ios::binary);
+            if (!output_file) {
+                throw CantOpenFileException("Nije mogao da kreira izlazni fajl! " + outputFile);
+            }
+
+            HeaderTable* headertable = new HeaderTable(); 
+            output_file.write((char*)headertable , sizeof(HeaderTable));
+
+            int sizeOfSections = sizeof(HeaderTable);
+            int numOfSections = 0;
+
+            for (auto& par : symbols) {
+                if (par.second == nullptr) continue;
+
+                 output_file.write(par.second , par.first->size);
+                 SectionHeader::createSectionHeader(par.first->redBr , SHT_PROGBITS , par.first->size ,sizeOfSections);
+
+                numOfSections++;
+                sizeOfSections += par.first->size;
+
+            }
+
+            Symbol* rel = Symbol::createSymbol(symbols , names, SECTION_REL , 0 , symbol_binding_local , 0 , symbol_type_section);
+            rel->size = records.size() * sizeof(RelocationRecord);
+            Symbol* str = Symbol::createSymbol(symbols , names, SECTION_STRTAB , 0 , symbol_binding_local , 0 , symbol_type_section);
+            Symbol* tab = Symbol::createSymbol(symbols , names, SECTION_SYMTAB , 0 , symbol_binding_local , 0 , symbol_type_section);
+            tab->size = symbols.size() * sizeof(Symbol);
+
+            int velicinaStr = 0;
+            for (std::string strin : names) {
+                const char* bytes = strin.c_str();
+                velicinaStr += strlen(bytes) + 1;
+                output_file.write(bytes , strlen(bytes) + 1);
+            }
+            str->size = velicinaStr;
+
+            for (RelocationRecord* rec : records) output_file.write((char*)rec , sizeof(RelocationRecord));
+            for (auto& par : symbols) {
+                Symbol* sym = par.first;
+                output_file.write((char*)sym , sizeof(Symbol));
+            }
+
+            SectionHeader::createSectionHeader(str->redBr , SHT_STRTAB , str->size ,sizeOfSections, names.size() );
+            sizeOfSections += str->size; headertable->e_shstrndx = numOfSections; numOfSections++;
+            SectionHeader::createSectionHeader(rel->redBr , SHT_RELA , rel->size ,sizeOfSections , records.size());
+            sizeOfSections += rel->size; numOfSections++;
+            SectionHeader::createSectionHeader(tab->size , SHT_SYMTAB , tab->size ,sizeOfSections,  symbols.size());
+            sizeOfSections += tab->size; numOfSections++;
+            
+
+            std::vector<SectionHeader*> sectionHeaders = SectionHeader::getSectionHeaders();
+            headertable->e_shnum = sectionHeaders.size();
+            headertable->e_shoff = sizeOfSections;
+
+            for (SectionHeader* sh : sectionHeaders) output_file.write((char*) sh , sizeof(SectionHeader));
+
+
+            output_file.seekg(32, std::ios::beg);
+            output_file.write((char*) &headertable->e_shoff, 4);
+            output_file.seekg(sizeof(HeaderTable) - 4, std::ios::beg);
+            output_file.write((char*)&headertable->e_shnum , 2);
+            output_file.write((char*)&headertable->e_shstrndx , 2);
+
         }
 
+    /*    Symbol::printSymbolTable(symbols, names);
+        SymbolMapping::printSymbolMapping();
+        RelocationRecord::printRelocationRecords(records);  */
 
         deleteResources();
      
 
-     /*   Symbol::printSymbolTable(symbols, names);
-        SymbolMapping::printSymbolMapping();
-        RelocationRecord::printRelocationRecords(records); */
+     
         
     }
     catch (CantOpenFileException& cofe) {

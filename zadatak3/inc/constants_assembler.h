@@ -113,3 +113,9 @@
 #define pre_sum 0x20
 #define post_sub 0x30
 #define post_sum 0x40
+
+#define pre_subS 0x01
+#define pre_sumS 0x02
+#define post_subS 0x03
+#define post_sumS 0x04
+

@@ -21,7 +21,8 @@ struct Symbol {
     static Symbol* getSymbolByName(std::unordered_map<Symbol*, char*>& symbols,  std::vector<std::string>& names , std::string name);
     Symbol() {}
     static Symbol* getSymbolById(std::unordered_map<Symbol*, char*>& symbols, int redBr);
-
+    
+    static Symbol* createSymbol(std::unordered_map<Symbol*, char*>& symbols,  std::vector<std::string>& names ,std::string name,int value , char binding, char section, char type);
     static std::unordered_set<std::string> undefined;
 
 private:
@@ -30,7 +31,7 @@ private:
     static std::unordered_set<std::string> defined;
 
     
-
     Symbol(int name,int value , char binding, char section, char type, int redBr);
+    
 
 };
